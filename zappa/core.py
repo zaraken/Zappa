@@ -494,7 +494,7 @@ class Zappa(object):
         # Then the pre-compiled packages..
         if use_precompiled_packages:
             print("Downloading and installing dependencies..")
-            installed_packages = self.get_installed_packages(site_packages, site_packages_64)
+            installed_packages = self.get_installed_packages(site_packages, site_packages_64, exclude)
 
             try:
                 for installed_package_name, installed_package_version in installed_packages.items():
@@ -610,10 +610,19 @@ class Zappa(object):
             tar.extract(member, path)
 
     @staticmethod
-    def get_installed_packages(site_packages, site_packages_64):
+    def get_installed_packages(site_packages, site_packages_64, excluded_packages=None):
         """
         Returns a dict of installed packages that Zappa cares about.
+        excluded_packages is a list of strings with glob-style patters from "excludes".
         """
+        def keep(package_name):
+            import fnmatch
+            for ex in excluded_packages:
+                if fnmatch.fnmatch(package_name, ex):
+                    logger.debug("Skip %s", package_name)
+                    return False
+            return True
+
         import pip  # this is to avoid 'funkiness' with global import
         package_to_keep = []
         if os.path.isdir(site_packages):
@@ -622,8 +631,9 @@ class Zappa(object):
             package_to_keep += os.listdir(site_packages_64)
 
         installed_packages = {package.project_name.lower(): package.version for package in
-                              pip.get_installed_distributions() if package.project_name in package_to_keep or
-                              package.location in [site_packages, site_packages_64]}
+                              pip.get_installed_distributions() if keep(package.project_name) and
+                              (package.project_name in package_to_keep or
+                              package.location in [site_packages, site_packages_64])}
 
         return installed_packages
 
