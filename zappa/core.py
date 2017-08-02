@@ -616,6 +616,9 @@ class Zappa(object):
         excluded_packages is a list of strings with glob-style patters from "excludes".
         """
         def keep(package_name):
+            if excluded_packages is None:
+                return True
+
             import fnmatch
             for ex in excluded_packages:
                 if fnmatch.fnmatch(package_name, ex):
